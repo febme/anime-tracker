@@ -67,6 +67,19 @@ export function useSeriesList() {
     await deleteDoc(doc(db, COL, id));
   };
 
+  const updateSeriesName = async (
+    seriesId: string,
+    newName: string,
+    userEmail: string
+  ) => {
+    if (!newName.trim()) return;
+    await updateDoc(doc(db, COL, seriesId), {
+      name: newName.trim(),
+      lastModifiedBy: userEmail,
+      lastModifiedAt: Date.now(),
+    });
+  };
+
   const setSeriesOrder = async (orderedIds: string[]) => {
     if (!orderedIds || orderedIds.length === 0) return;
     const batch = writeBatch(db);
@@ -174,6 +187,7 @@ export function useSeriesList() {
     error,
     addSeries,
     deleteSeries,
+    updateSeriesName,
     updateEpisodeStatus,
     changeEpisodeCount,
     setSeriesOrder,

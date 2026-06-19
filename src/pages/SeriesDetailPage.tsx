@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Minus,
@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Clock,
   User,
+  Edit3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import StatusBadge from "../components/StatusBadge";
@@ -43,13 +44,22 @@ function formatDate(ts?: number) {
 
 export default function SeriesDetailPage({ series, onBack }: Props) {
   const { user, isAdmin } = useAuth();
-  const { updateEpisodeStatus, changeEpisodeCount, deleteSeries, batchUpdateEpisodes } =
+  const { updateEpisodeStatus, changeEpisodeCount, deleteSeries, batchUpdateEpisodes, updateSeriesName } =
     useSeriesList();
   const [delConfirm, setDelConfirm] = useState(false);
   const [collapsedRows, setCollapsedRows] = useState<Set<number>>(new Set());
   const [showBatchEdit, setShowBatchEdit] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(series.name);
+  const [savingName, setSavingName] = useState(false);
 
   const userEmail = user?.email ?? "anonim";
+
+  useEffect(() => {
+    if (!isEditingName) {
+      setEditedName(series.name);
+    }
+  }, [series.name, isEditingName]);
 
   const handleStatusChange = async (
     epNum: number,
@@ -91,6 +101,23 @@ export default function SeriesDetailPage({ series, onBack }: Props) {
     });
   };
 
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = editedName.trim();
+    if (!trimmed) return;
+    if (trimmed === series.name) {
+      setIsEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateSeriesName(series.id, trimmed, userEmail);
+      setIsEditingName(false);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const seriesProgress = calcSeriesProgress(series.episodes, series.episodeCount);
 
   const getEpisode = (num: number): Episode => {
@@ -116,7 +143,7 @@ export default function SeriesDetailPage({ series, onBack }: Props) {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Sol */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={onBack}
                 className="flex items-center gap-1.5 text-slate-400 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-white/10"
@@ -125,9 +152,50 @@ export default function SeriesDetailPage({ series, onBack }: Props) {
                 Geri
               </button>
               <div className="h-5 w-px bg-white/20" />
-              <h1 className="text-xl font-bold text-white truncate max-w-xs md:max-w-none">
-                {series.name}
-              </h1>
+              <div className="flex items-center gap-2 min-w-0">
+                {isEditingName ? (
+                  <form onSubmit={handleSaveName} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="min-w-[180px] max-w-xs bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      aria-label="Seri adı" 
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      disabled={savingName}
+                      className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1.5 rounded-xl transition disabled:opacity-50"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedName(series.name);
+                        setIsEditingName(false);
+                      }}
+                      className="bg-white/10 hover:bg-white/20 text-slate-300 text-xs px-3 py-1.5 rounded-xl transition"
+                    >
+                      İptal
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <h1 className="text-xl font-bold text-white truncate max-w-xs md:max-w-none">
+                      {series.name}
+                    </h1>
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className="flex items-center gap-1 text-slate-400 hover:text-white text-xs rounded-lg px-2 py-1 border border-white/10 hover:bg-white/5 transition"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Düzenle
+                    </button>
+                  </>
+                )}
+              </div>
               <span className="bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs px-2 py-1 rounded-lg">
                 {series.episodeCount} Bölüm
               </span>
