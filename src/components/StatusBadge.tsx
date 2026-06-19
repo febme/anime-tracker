@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { StatusValue, STATUS_LABELS, STATUS_COLORS } from "../types";
 
 const ALL_STATUSES: StatusValue[] = ["tamam", "yarim", "eksik", "sifir"];
@@ -23,6 +24,22 @@ const BADGE_STYLE: Record<StatusValue, string> = {
 };
 
 export default function StatusBadge({ value, onChange, readonly }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
   if (readonly) {
     return (
       <span
@@ -35,28 +52,36 @@ export default function StatusBadge({ value, onChange, readonly }: Props) {
   }
 
   return (
-    <div className="relative group">
+    <div className="relative" ref={containerRef}>
       <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
         className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium cursor-pointer hover:opacity-80 transition ${BADGE_STYLE[value]}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${DOT_COLORS[value]}`} />
         {STATUS_LABELS[value]}
       </button>
       {/* Dropdown */}
-      <div className="absolute z-30 top-full mt-1 left-0 bg-slate-800 border border-white/10 rounded-xl shadow-2xl p-1 hidden group-hover:block min-w-[100px]">
-        {ALL_STATUSES.map((s) => (
-          <button
-            key={s}
-            onClick={() => onChange?.(s)}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs hover:bg-white/10 transition ${
-              s === value ? "opacity-100 font-semibold" : "opacity-70"
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLORS[s]}`} />
-            <span className="text-white">{STATUS_LABELS[s]}</span>
-          </button>
-        ))}
-      </div>
+      {isOpen && (
+        <div className="absolute z-30 top-full mt-1 left-0 bg-slate-800 border border-white/10 rounded-xl shadow-2xl p-1 min-w-[100px]">
+          {ALL_STATUSES.map((s) => (
+            <button
+              type="button"
+              key={s}
+              onClick={() => {
+                onChange?.(s);
+                setIsOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs hover:bg-white/10 transition ${
+                s === value ? "opacity-100 font-semibold" : "opacity-70"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLORS[s]}`} />
+              <span className="text-white">{STATUS_LABELS[s]}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
